@@ -70,6 +70,29 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
   }
 
   @Override
+  public List<TableId> tableIds(Connection conn) throws SQLException {
+    DatabaseMetaData metadata = conn.getMetaData();
+    String[] tableTypes = tableTypes(metadata, this.tableTypes);
+    String tableTypeDisplay = displayableTableTypes(tableTypes, ", ");
+    glog.debug("Using {} dialect to get {}", this, tableTypeDisplay);
+
+    try (ResultSet rs = metadata.getTables(catalogPattern(), schemaPattern(), "%", tableTypes)) {
+      List<TableId> tableIds = new ArrayList<>();
+      while (rs.next()) {
+        //String catalogName = rs.getString(1);
+        String schemaName = rs.getString(2);
+        String tableName = rs.getString(3);
+        //TableId tableId = new TableId(catalogName, schemaName, tableName);
+        TableId tableId = new TableId("", schemaName, tableName);
+        if (includeTable(tableId)) {
+          tableIds.add(tableId);
+        }
+      }
+      glog.debug("Used {} dialect to find {} {}", this, tableIds.size(), tableTypeDisplay);
+      return tableIds;
+    }
+  }
+  @Override
   protected String getSqlType(SinkRecordField field) {
     if (field.schemaName() != null) {
       switch (field.schemaName()) {
