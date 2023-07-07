@@ -36,12 +36,16 @@ import io.confluent.connect.jdbc.util.ExpressionBuilder;
 import io.confluent.connect.jdbc.util.ExpressionBuilder.Transform;
 import io.confluent.connect.jdbc.util.IdentifierRules;
 import io.confluent.connect.jdbc.util.TableId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link DatabaseDialect} for Altibase.
  */
 public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
 
+  private final Logger log = LoggerFactory.getLogger(AltibaseDatabaseDialect.class);
+  
   /**
    * The provider for {@link AltibaseDatabaseDialect}.
    */
