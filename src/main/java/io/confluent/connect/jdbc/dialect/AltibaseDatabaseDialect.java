@@ -149,7 +149,6 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
       Collection<ColumnId> keyColumns,
       Collection<ColumnId> nonKeyColumns
   ) {
-    // http://lpar.ath0.com/2013/08/12/upsert-in-db2/
     final Transform<ColumnId> transform = (builder, col) -> {
       builder.append(table)
              .append(".")
