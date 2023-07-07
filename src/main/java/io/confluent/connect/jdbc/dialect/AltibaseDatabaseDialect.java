@@ -108,7 +108,8 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
     if (field.schemaName() != null) {
       switch (field.schemaName()) {
         case Decimal.LOGICAL_NAME:
-          return "DECIMAL(31," + field.schemaParameters().get(Decimal.SCALE_FIELD) + ")";
+          // Altibase max precision is 38
+          return "DECIMAL(38," + field.schemaParameters().get(Decimal.SCALE_FIELD) + ")";
         case Date.LOGICAL_NAME:
           return "DATE";
         case Time.LOGICAL_NAME:
@@ -135,9 +136,9 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
       case BOOLEAN:
         return "SMALLINT";
       case STRING:
-        return "VARCHAR(32672)";
+        return "VARCHAR(32000)";
       case BYTES:
-        return "BLOB(64000)";
+        return "BLOB";
       default:
         return super.getSqlType(field);
     }
