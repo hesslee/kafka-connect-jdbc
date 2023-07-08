@@ -154,42 +154,40 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
       builder.append(table)
              .append(".")
              .appendColumnName(col.name())
-             .append("=DAT.")
+             .append("=incoming.")
              .appendColumnName(col.name());
     };
 
     ExpressionBuilder builder = expressionBuilder();
     builder.append("merge into ");
     builder.append(table);
-    builder.append(" using (values(");
+    builder.append(" using (select ");
     builder.appendList()
            .delimitedBy(", ")
-           .transformedBy(ExpressionBuilder.placeholderInsteadOfColumnNames("?"))
+           .transformedBy(ExpressionBuilder.columnNamesWithPrefix("? "))
            .of(keyColumns, nonKeyColumns);
-    builder.append(")) as DAT(");
-    builder.appendList()
-           .delimitedBy(", ")
-           .transformedBy(ExpressionBuilder.columnNames())
-           .of(keyColumns, nonKeyColumns);
-    builder.append(") on ");
+    builder.append(" FROM dual) incoming on(");
     builder.appendList()
            .delimitedBy(" and ")
            .transformedBy(transform)
            .of(keyColumns);
+    builder.append(")");
     if (nonKeyColumns != null && !nonKeyColumns.isEmpty()) {
       builder.append(" when matched then update set ");
       builder.appendList()
-             .delimitedBy(", ")
+             .delimitedBy(",")
              .transformedBy(transform)
              .of(nonKeyColumns);
     }
 
     builder.append(" when not matched then insert(");
-    builder.appendList().delimitedBy(",").of(nonKeyColumns, keyColumns);
+    builder.appendList()
+           .delimitedBy(",")
+           .of(nonKeyColumns, keyColumns);
     builder.append(") values(");
     builder.appendList()
            .delimitedBy(",")
-           .transformedBy(ExpressionBuilder.columnNamesWithPrefix("DAT."))
+           .transformedBy(ExpressionBuilder.columnNamesWithPrefix("incoming."))
            .of(nonKeyColumns, keyColumns);
     builder.append(")");
     return builder.toString();
