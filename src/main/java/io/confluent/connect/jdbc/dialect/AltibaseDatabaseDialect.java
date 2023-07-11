@@ -39,6 +39,8 @@ import io.confluent.connect.jdbc.util.TableId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// 다른 DB들의 dialect들을 참고하여 적당히 만들었음.
+// 프로토타입 형태로써, 검증이 매우 부족한 상태임.
 /**
  * A {@link DatabaseDialect} for Altibase.
  */
@@ -79,6 +81,10 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
     return "SELECT 1 FROM DUAL";
   }
 
+  // SELECT * FROM "mydb"."SYS"."USERS" 문제
+  // Altibase JDBC DatabaseMetaData.getTables(...) 함수에서 TABLE_CAT 로  "mydb"를 리턴해서 발생하는 문제임.
+  // PostgreSQL에서는 위 함수에서 TABLE_CAT 로  NULL을 리턴해서 문제가 없음.
+  // 알티베이스 JDBC는 그대로 두고, 아래 함수에서 NULL처리해서 해결함....
   @Override
   public List<TableId> tableIds(Connection conn) throws SQLException {
     DatabaseMetaData metadata = conn.getMetaData();
@@ -102,7 +108,11 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
       return tableIds;
     }
   }
-  
+
+  // kafka topic을 이용해서, table auto creation 할때 사용되는 부분인데, 검증하지는 않았음.
+  // kafka topic에서 string 이 있을때, 자릿수가 없으므로, altibase 입장에서는 최대크기인 VARCHAR(32000) 로 생성함.
+  // 다른 타입들도 동일한 논리로, precision, scale 등을 알티베이스의 최대값으로 해주고 있음.
+  // 다른 DB들의 dialect 에도 동일하게 해당 DB의 최대값으로 해주고 있음.
   @Override
   protected String getSqlType(SinkRecordField field) {
     if (field.schemaName() != null) {
@@ -144,6 +154,15 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
     }
   }
 
+  // 현재 지원형태
+  // merge into "test-altibase-USERS" using (select ? "ID", ? "NAME" FROM dual) incoming on("test-altibase-USERS"."ID"=incoming."ID") 
+  // when matched then update set "test-altibase-USERS"."NAME"=incoming."NAME" 
+  // when not matched then insert("test-altibase-USERS"."NAME","test-altibase-USERS"."ID") values(incoming."NAME",incoming."ID")
+  // ERROR-0x3123B : Invalid use of host variables
+  // 알티베이스는 select target 절에, 호스트변수를 쓸려면, cast를 해야한다... ***** 이거 뭐 할때마다 걸린다... ***제품개선 1순위***
+  // 위의 경우 (select case(? as varchar(20)) "ID", case(? as int) "NAME" FROM dual) 요런 형태로 바뀌어야 한다.
+  // 위와같이 변경을 해주어도, cast()에서 LOB을 지원하지 않으므로, insert.mode=upsert 방식에서는 알티베이스는 LOB은 지원할수 없음.
+  // 나중에 고쳐보기로 하고, 현재로써는 이대로 둡니다.
   @Override
   public String buildUpsertQueryStatement(
       final TableId table,
