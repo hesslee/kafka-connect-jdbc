@@ -205,11 +205,12 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
       builder.appendList()
              .delimitedBy(" and ")
              .transformedBy(transformUpdate)
-             .of(KeyColumns);
+             .of(keyColumns);
       builder.append(" ; ");
     }
 
     builder.append(" end; ");
+    return builder.toString();
   }
 
 }
