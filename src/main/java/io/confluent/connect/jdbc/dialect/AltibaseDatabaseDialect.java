@@ -68,7 +68,9 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
    * @param config the connector configuration; may not be null
    */
   public AltibaseDatabaseDialect(AbstractConfig config) {
-    super(config, new IdentifierRules(".", "\"", "\""));
+    //buildUpsertQueryStatement 함수의 구현문제로, 테이블이름 및 컬럼이름을 쌍따옴표 처리하지 않습니다.
+    //super(config, new IdentifierRules(".", "\"", "\""));
+    super(config, new IdentifierRules(".", "", ""));
   }
 
   @Override
@@ -154,7 +156,10 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
     }
   }
 
-  // 현재 지원형태
+  // 기존 merge into 구문 문제를 해결하고자, anonymous block 기능을 이용하여, insert 후에 duplication 시에 update 하는 형태를 구현함.
+  // 이 방식에서, recordtype을 이용하는데, recordtype에서 대소문자 컬럼처리에 문제가 있어서, 테이블이름 및 컬럼이름을 쌍따옴표 처리하지 않습니다.
+  // 즉, 대소문자 테이블이름 및 컬럼이름 사용이 안되고, 모두 대문자 처리됩니다.
+  // 기존 merge into 구문 문제 :
   // merge into "test-altibase-USERS" using (select ? "ID", ? "NAME" FROM dual) incoming on("test-altibase-USERS"."ID"=incoming."ID") 
   // when matched then update set "test-altibase-USERS"."NAME"=incoming."NAME" 
   // when not matched then insert("test-altibase-USERS"."NAME","test-altibase-USERS"."ID") values(incoming."NAME",incoming."ID")
@@ -162,53 +167,49 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
   // 알티베이스는 select target 절에, 호스트변수를 쓸려면, cast를 해야한다... ***** 이거 뭐 할때마다 걸린다... ***제품개선 1순위***
   // 위의 경우 (select case(? as varchar(20)) "ID", case(? as int) "NAME" FROM dual) 요런 형태로 바뀌어야 한다.
   // 위와같이 변경을 해주어도, cast()에서 LOB을 지원하지 않으므로, insert.mode=upsert 방식에서는 알티베이스는 LOB은 지원할수 없음.
-  // 나중에 고쳐보기로 하고, 현재로써는 이대로 둡니다.
   @Override
   public String buildUpsertQueryStatement(
       final TableId table,
       Collection<ColumnId> keyColumns,
       Collection<ColumnId> nonKeyColumns
   ) {
-    final Transform<ColumnId> transform = (builder, col) -> {
-      builder.append(table)
-             .append(".")
+    final Transform<ColumnId> transformAssignment = (builder, col) -> {
+      builder.append("r1.")
              .appendColumnName(col.name())
-             .append("=incoming.")
-             .appendColumnName(col.name());
+             .append(" := ? ; ")
+    };
+    final Transform<ColumnId> transformUpdate = (builder, col) -> {
+      builder.appendColumnName(col.name())
+             .append(" = r1.")
+             .appendColumnName(col.name())
     };
 
     ExpressionBuilder builder = expressionBuilder();
-    builder.append("merge into ");
-    builder.append(table);
-    builder.append(" using (select ");
+    builder.append("declare ");
+    builder.append(" r1 ").append(table).append("%rowtype; ");
+    builder.append(" begin ");
     builder.appendList()
-           .delimitedBy(", ")
-           .transformedBy(ExpressionBuilder.columnNamesWithPrefix("? "))
+           .transformedBy(transformAssignment)
            .of(keyColumns, nonKeyColumns);
-    builder.append(" FROM dual) incoming on(");
-    builder.appendList()
-           .delimitedBy(" and ")
-           .transformedBy(transform)
-           .of(keyColumns);
-    builder.append(")");
+    builder.append(" insert into ").append(table).append(" values r1; ");
+
     if (nonKeyColumns != null && !nonKeyColumns.isEmpty()) {
-      builder.append(" when matched then update set ");
+      builder.append(" exception ");
+      builder.append(" when dup_val_on_index then ");
+      builder.append(" update ").append(table).append(" set ");
       builder.appendList()
-             .delimitedBy(",")
-             .transformedBy(transform)
+             .delimitedBy(", ")
+             .transformedBy(transformUpdate)
              .of(nonKeyColumns);
+      builder.append(" where ");
+      builder.appendList()
+             .delimitedBy(" and ")
+             .transformedBy(transformUpdate)
+             .of(KeyColumns);
+      builder.append(" ; ");
     }
 
-    builder.append(" when not matched then insert(");
-    builder.appendList()
-           .delimitedBy(",")
-           .of(nonKeyColumns, keyColumns);
-    builder.append(") values(");
-    builder.appendList()
-           .delimitedBy(",")
-           .transformedBy(ExpressionBuilder.columnNamesWithPrefix("incoming."))
-           .of(nonKeyColumns, keyColumns);
-    builder.append(")");
-    return builder.toString();
+    builder.append(" end; ");
   }
+
 }
