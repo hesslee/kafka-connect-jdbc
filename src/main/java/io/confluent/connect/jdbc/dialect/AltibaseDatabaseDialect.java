@@ -176,12 +176,12 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
     final Transform<ColumnId> transformAssignment = (builder, col) -> {
       builder.append("r1.")
              .appendColumnName(col.name())
-             .append(" := ? ; ")
+             .append(" := ? ; ");
     };
     final Transform<ColumnId> transformUpdate = (builder, col) -> {
       builder.appendColumnName(col.name())
              .append(" = r1.")
-             .appendColumnName(col.name())
+             .appendColumnName(col.name());
     };
 
     ExpressionBuilder builder = expressionBuilder();
