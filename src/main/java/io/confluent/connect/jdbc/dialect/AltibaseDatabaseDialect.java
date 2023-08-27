@@ -83,7 +83,7 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
     return "SELECT 1 FROM DUAL";
   }
 
-  // SELECT * FROM "mydb"."SYS"."USERS" 문제
+  // SELECT * FROM "mydb"."user_name"."table_name" 문제
   // Altibase JDBC DatabaseMetaData.getTables(...) 함수에서 TABLE_CAT 로  "mydb"를 리턴해서 발생하는 문제임.
   // PostgreSQL에서는 위 함수에서 TABLE_CAT 로  NULL을 리턴해서 문제가 없음.
   // 알티베이스 JDBC는 그대로 두고, 아래 함수에서 NULL처리해서 해결함....
@@ -189,6 +189,7 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
     builder.append(" r1 ").append(table).append("%rowtype; ");
     builder.append(" begin ");
     builder.appendList()
+           .delimitedBy(" ")
            .transformedBy(transformAssignment)
            .of(keyColumns, nonKeyColumns);
     builder.append(" insert into ").append(table).append(" values r1; ");
