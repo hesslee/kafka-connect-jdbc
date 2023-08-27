@@ -70,7 +70,9 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
   public AltibaseDatabaseDialect(AbstractConfig config) {
     //buildUpsertQueryStatement 함수의 구현문제로, 테이블이름 및 컬럼이름을 쌍따옴표 처리하지 않습니다.
     //super(config, new IdentifierRules(".", "\"", "\""));
-    super(config, new IdentifierRules(".", "", ""));
+    IdentifierRules rules = new IdentifierRules(".", "\"", "\"");
+    rules.setQuoteIdentifiers(NEVER);
+    super(config, rules);
   }
 
   @Override
