@@ -73,6 +73,8 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
     IdentifierRules rules = new IdentifierRules(".", "\"", "\"");
     rules.setQuoteIdentifiers(NEVER);
     super(config, rules);
+    //이것만으로는 안됨... altibase source or sink connector 생성시에 아래 설정을 추가해야 함.
+    //"quote.sql.identifiers": "NEVER"
   }
 
   @Override
