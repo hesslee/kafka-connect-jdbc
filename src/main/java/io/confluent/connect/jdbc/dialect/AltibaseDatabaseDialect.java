@@ -162,7 +162,10 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
 
   // 기존 merge into 구문 문제를 해결하고자, anonymous block 기능을 이용하여, insert 후에 duplication 시에 update 하는 형태를 구현함.
   // 이 방식에서, recordtype을 이용하는데, recordtype에서 대소문자 컬럼처리에 문제가 있어서, 테이블이름 및 컬럼이름을 쌍따옴표 처리하지 않습니다.
-  // 즉, 대소문자 테이블이름 및 컬럼이름 사용이 안되고, 모두 대문자 처리됩니다.
+  // 즉, 대소문자 테이블이름 및 컬럼이름 사용이 안되고, 모두 대문자 처리하기 위하여,
+  // source 및 sink connector의 설정에 아래 사항을 추가해야 합니다.
+  // "quote.sql.identifiers": "NEVER"
+  
   // 기존 merge into 구문 문제 :
   // merge into "test-altibase-USERS" using (select ? "ID", ? "NAME" FROM dual) incoming on("test-altibase-USERS"."ID"=incoming."ID") 
   // when matched then update set "test-altibase-USERS"."NAME"=incoming."NAME" 
