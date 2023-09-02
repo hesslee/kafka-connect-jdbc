@@ -203,7 +203,11 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
 
     if (nonKeyColumns != null && !nonKeyColumns.isEmpty()) {
       builder.append(" exception ");
-      builder.append(" when dup_val_on_index then ");
+      builder.append(" when others then ");
+      // 69720  : The row already exists in a unique index.
+      // 201063 : Duplicate values in an index
+      // 200820 : Unable to insert (or update) NULL into NOT NULL column.
+      builder.append(" if sqlcode in (69720, 201063, 200820) then ");
       builder.append(" update ").append(table).append(" set ");
       builder.appendList()
              .delimitedBy(", ")
@@ -214,6 +218,9 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
              .delimitedBy(" and ")
              .transformedBy(transformUpdate)
              .of(keyColumns);
+      builder.append(" else ");
+      builder.append(" raise; ");
+      builder.append(" end if; ");
       builder.append(" ; ");
     }
 
