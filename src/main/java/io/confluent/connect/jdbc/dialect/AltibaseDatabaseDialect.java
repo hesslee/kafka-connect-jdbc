@@ -204,6 +204,7 @@ public class AltibaseDatabaseDialect extends GenericDatabaseDialect {
     if (nonKeyColumns != null && !nonKeyColumns.isEmpty()) {
       builder.append(" exception ");
       builder.append(" when others then ");
+      // SQLcode 200820 is to handle some databases including Altibase CDC that generate only updated columns. 
       // 69720  : The row already exists in a unique index.
       // 201063 : Duplicate values in an index
       // 200820 : Unable to insert (or update) NULL into NOT NULL column.
